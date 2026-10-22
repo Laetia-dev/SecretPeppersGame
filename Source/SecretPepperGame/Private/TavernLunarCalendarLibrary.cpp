@@ -27,8 +27,10 @@ FTavernLunarDate UTavernLunarCalendarLibrary::GetLunarCalendarDate(int32 DayNr)
     Date.SunSign = static_cast<ETavernZodiacSign>(SunIndex);
     Date.MoonSign = static_cast<ETavernZodiacSign>(MoonIndex);
 
-    // Zodiac element order repeats every four signs:
+    // Zodiac elements repeat in Fire, Earth, Air, Water order:
     // Aries Fire, Taurus Earth, Gemini Air, Cancer Water, etc.
+    // Sun is the stable month-long influence; Moon is the daily influence.
+    Date.SunElement = static_cast<ETavernLunarElement>(SunIndex % 4);
     Date.MoonElement = static_cast<ETavernLunarElement>(MoonIndex % 4);
     return Date;
 }
