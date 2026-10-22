@@ -76,12 +76,12 @@ FText UTavernSubsystem::GetCurrentCalendarDebugText() const
 	const int32 Festival = FMath::Clamp(static_cast<int32>(D.Festival), 0, 8);
 
 	const FString Info = FString::Printf(
-		TEXT("YEAR %d  |  %s  |  DAY %d/48\\n")
-		TEXT("%s MONTH  |  DAY %d/4  |  GAME DAY %d\\n\\n")
-		TEXT("SUN (PRIMARY): %s  |  %s\\n")
-		TEXT("MOON: %s  |  %s  |  %s\\n\\n")
-		TEXT("FESTIVAL: %s\\n")
-		TEXT("SEASON ELEMENT: TBD (design decision)\\n")
+		TEXT("YEAR %d  |  %s  |  DAY %d/48\n")
+		TEXT("%s MONTH  |  DAY %d/4  |  GAME DAY %d\n\n")
+		TEXT("SUN (PRIMARY): %s  |  %s\n")
+		TEXT("MOON: %s  |  %s  |  %s\n\n")
+		TEXT("FESTIVAL: %s\n")
+		TEXT("SEASON ELEMENT: TBD (design decision)\n")
 		TEXT("ROOM DIRECTIONS (planned): N Earth | E Air | S Fire | W Water"),
 		D.Year, SeasonLabels[Season], D.DayOfYear,
 		ZodiacLabels[Sun], D.DayOfMonth, D.DayNr,
