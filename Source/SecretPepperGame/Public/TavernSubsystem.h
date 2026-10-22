@@ -13,6 +13,36 @@ enum class ETavernTimeOfDay : uint8
 	Night UMETA(DisplayName = "Night"),
 };
 
+// The day's special sky alignment (if any).
+UENUM(BlueprintType)
+enum class ETavernCelestialEvent : uint8
+{
+	None UMETA(DisplayName = "None"),
+	SolarEclipse UMETA(DisplayName = "Solar Eclipse"),
+	MercuryTransit UMETA(DisplayName = "Mercury Transit"),
+	VenusTransit UMETA(DisplayName = "Venus Transit")
+};
+
+// One random plan per 48-day game year. A day value of 0 means not scheduled.
+// Dates are stored, not rerolled by reading the calendar.
+USTRUCT(BlueprintType)
+struct FTavernCelestialYearPlan
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Celestial")
+	int32 Year = 1;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Celestial")
+	int32 SolarEclipseDay = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Celestial")
+	int32 MercuryTransitDay = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Celestial")
+	int32 VenusTransitDay = 0;
+};
+
 UENUM(BlueprintType)
 enum class ETavernIngredient : uint8
 {
@@ -76,6 +106,19 @@ public:
 	// Derived from the same DayNr used by FlipTimeOfDay / AdvanceDay.
 	UFUNCTION(BlueprintPure, Category = "Tavern|Calendar")
 	FTavernLunarDate GetCurrentLunarDate() const;
+
+	// Prototype only: returns one multiline string for displaying every current
+	// calendar property in a single UMG TextBlock. No gameplay side effects.
+	UFUNCTION(BlueprintPure, Category = "Tavern|Calendar|Debug")
+	FText GetCurrentCalendarDebugText() const;
+
+	// Planned days for this game year; 0 means the event was not rolled.
+	UFUNCTION(BlueprintPure, Category = "Tavern|Calendar|Celestial")
+	FTavernCelestialYearPlan GetCurrentCelestialYearPlan() const;
+
+	// A scheduled date even at night; for daytime visuals also check TimeOfDay.
+	UFUNCTION(BlueprintPure, Category = "Tavern|Calendar|Celestial")
+	ETavernCelestialEvent GetTodaysCelestialEvent() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Tavern")
 	void SetDayNr(int32 NewDayNr);
@@ -172,6 +215,17 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Tavern")
 	FTavernState State;
 
+	// Percent chance of each alignment occurring ONCE in a given game year.
+	// Tune for future years. Changing a value does not reroll an existing year.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tavern|Celestial|Chances", meta = (ClampMin = "0.0", ClampMax = "100.0", UIMin = "0.0", UIMax = "100.0"))
+	float SolarEclipseChancePercent = 60.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tavern|Celestial|Chances", meta = (ClampMin = "0.0", ClampMax = "100.0", UIMin = "0.0", UIMax = "100.0"))
+	float MercuryTransitChancePercent = 30.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tavern|Celestial|Chances", meta = (ClampMin = "0.0", ClampMax = "100.0", UIMin = "0.0", UIMax = "100.0"))
+	float VenusTransitChancePercent = 10.0f;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory")
 	TMap<ETavernIngredient, int32> Inventory;
 
@@ -188,6 +242,11 @@ protected:
 	int32 CleanlinessMax = 10;
 
 private:
+	// Cache all years visited during this run so day jumps do not reroll past years.
+	UPROPERTY(Transient)
+	TMap<int32, FTavernCelestialYearPlan> CelestialYearPlans;
+
+	void EnsureCelestialYearPlan(int32 Year);
 	int32 ClampVibe(int32 InVibe) const;
 	int32 ClampCleanliness(int32 InCleanliness) const;
 };
