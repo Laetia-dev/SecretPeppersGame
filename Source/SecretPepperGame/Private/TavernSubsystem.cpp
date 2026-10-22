@@ -18,11 +18,16 @@ void UTavernSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	State.Coins = 10;
 	State.PreparedFood = 0;
+
+	// Year 1 is generated once at run initialization.
+	CelestialYearPlans.Empty();
+	EnsureCelestialYearPlan(GetCurrentLunarDate().Year);
 }
 
 void UTavernSubsystem::Deinitialize()
 {
 	Inventory.Empty();
+	CelestialYearPlans.Empty();
 	Super::Deinitialize();
 }
 
@@ -39,6 +44,90 @@ int32 UTavernSubsystem::GetDayNr() const
 FTavernLunarDate UTavernSubsystem::GetCurrentLunarDate() const
 {
 	return UTavernLunarCalendarLibrary::GetLunarCalendarDate(State.DayNr);
+}
+
+
+FTavernCelestialYearPlan UTavernSubsystem::GetCurrentCelestialYearPlan() const
+{
+	const int32 CurrentYear = GetCurrentLunarDate().Year;
+	if (const FTavernCelestialYearPlan* Found = CelestialYearPlans.Find(CurrentYear))
+	{
+		return *Found;
+	}
+
+	// Should only occur before subsystem initialization; never roll from a getter.
+	FTavernCelestialYearPlan Empty;
+	Empty.Year = CurrentYear;
+	return Empty;
+}
+
+ETavernCelestialEvent UTavernSubsystem::GetTodaysCelestialEvent() const
+{
+	const int32 DayOfYear = GetCurrentLunarDate().DayOfYear;
+	const FTavernCelestialYearPlan Plan = GetCurrentCelestialYearPlan();
+
+	if (DayOfYear == Plan.SolarEclipseDay) return ETavernCelestialEvent::SolarEclipse;
+	if (DayOfYear == Plan.MercuryTransitDay) return ETavernCelestialEvent::MercuryTransit;
+	if (DayOfYear == Plan.VenusTransitDay) return ETavernCelestialEvent::VenusTransit;
+	return ETavernCelestialEvent::None;
+}
+
+void UTavernSubsystem::EnsureCelestialYearPlan(int32 Year)
+{
+	if (Year < 1 || CelestialYearPlans.Contains(Year))
+	{
+		return;
+	}
+
+	FTavernCelestialYearPlan Plan;
+	Plan.Year = Year;
+
+	// The chances are separate annual rolls, NOT a choice between three outcomes.
+	const bool bEclipse = FMath::FRand() * 100.0f < FMath::Clamp(SolarEclipseChancePercent, 0.0f, 100.0f);
+	const bool bMercury = FMath::FRand() * 100.0f < FMath::Clamp(MercuryTransitChancePercent, 0.0f, 100.0f);
+	const bool bVenus = FMath::FRand() * 100.0f < FMath::Clamp(VenusTransitChancePercent, 0.0f, 100.0f);
+
+	TArray<int32> FreeDays;
+	TArray<int32> EclipseDays;
+
+	for (int32 Day = 1; Day <= 48; ++Day)
+	{
+		// Preserve all eight Sabbats on days 1, 7, 13, ... 43.
+		if ((Day - 1) % 6 == 0)
+		{
+			continue;
+		}
+
+		FreeDays.Add(Day);
+		// A solar eclipse can happen only on New Moon (day 1 of any zodiac month).
+		if ((Day - 1) % 4 == 0)
+		{
+			EclipseDays.Add(Day);
+		}
+	}
+
+	if (bEclipse && EclipseDays.Num() > 0)
+	{
+		Plan.SolarEclipseDay = EclipseDays[FMath::RandHelper(EclipseDays.Num())];
+		FreeDays.Remove(Plan.SolarEclipseDay);
+	}
+
+	// The planets transit the Sun independently of the lunar phase.
+	// Distinct dates make each alignment an occasion of its own.
+	if (bMercury && FreeDays.Num() > 0)
+	{
+		const int32 Index = FMath::RandHelper(FreeDays.Num());
+		Plan.MercuryTransitDay = FreeDays[Index];
+		FreeDays.RemoveAtSwap(Index);
+	}
+
+	if (bVenus && FreeDays.Num() > 0)
+	{
+		const int32 Index = FMath::RandHelper(FreeDays.Num());
+		Plan.VenusTransitDay = FreeDays[Index];
+	}
+
+	CelestialYearPlans.Add(Year, Plan);
 }
 
 FText UTavernSubsystem::GetCurrentCalendarDebugText() const
@@ -89,7 +178,18 @@ FText UTavernSubsystem::GetCurrentCalendarDebugText() const
 		MoonLabels[Phase], ZodiacLabels[Moon], ElementLabels[MoonElement],
 		FestivalLabels[Festival]
 	);
-	return FText::FromString(Info);
+	const FTavernCelestialYearPlan Plan = GetCurrentCelestialYearPlan();
+	static const TCHAR* const CelestialLabels[] = {
+		TEXT("None"), TEXT("Solar Eclipse"), TEXT("Mercury Transit"), TEXT("Venus Transit")
+	};
+	const int32 EventIndex = FMath::Clamp(static_cast<int32>(GetTodaysCelestialEvent()), 0, 3);
+	const FString SkyInfo = FString::Printf(
+		TEXT("\n\nSKY TODAY: %s\n")
+		TEXT("YEAR PLAN (0 = no event): ECLIPSE DAY %d | MERCURY DAY %d | VENUS DAY %d"),
+		CelestialLabels[EventIndex],
+		Plan.SolarEclipseDay, Plan.MercuryTransitDay, Plan.VenusTransitDay
+	);
+	return FText::FromString(Info + SkyInfo);
 }
 
 void UTavernSubsystem::SetDayNr(int32 NewDayNr)
@@ -102,6 +202,9 @@ void UTavernSubsystem::SetDayNr(int32 NewDayNr)
 	}
 
 	State.DayNr = NewDayNr;
+
+	// Roll the next year's sky once, before anyone receives OnDayChanged.
+	EnsureCelestialYearPlan(GetCurrentLunarDate().Year);
 	OnDayChanged.Broadcast(State.DayNr);
 	OnLunarDateChanged.Broadcast(GetCurrentLunarDate());
 }
@@ -326,6 +429,10 @@ void UTavernSubsystem::ResetRun(bool bResetDayNr)
 	{
 		Pair.Value = 0;
 	}
+
+	// A new run gets a fresh sky, including when DayNr is intentionally retained.
+	CelestialYearPlans.Empty();
+	EnsureCelestialYearPlan(GetCurrentLunarDate().Year);
 
 	// All run data is reset before observers clear or rebuild their own state.
 	OnRunReset.Broadcast();
