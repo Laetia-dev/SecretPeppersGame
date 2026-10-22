@@ -13,10 +13,32 @@ FTavernLunarDate UTavernLunarCalendarLibrary::GetLunarCalendarDate(int32 DayNr)
     // Convert to zero-based indices; Day 1 is New Moon in Aries.
     const int32 DayIndex = Date.DayNr - 1;
     Date.Year = DayIndex / DaysPerYear + 1;
-    Date.Month = (DayIndex % DaysPerYear) / DaysPerMonth + 1;
+    Date.DayOfYear = DayIndex % DaysPerYear + 1;
+    Date.Month = (Date.DayOfYear - 1) / DaysPerMonth + 1;
     Date.DayOfMonth = (DayIndex % DaysPerMonth) + 1;
 
     const int32 SunIndex = Date.Month - 1;
+
+    // Each season lasts three zodiac months, beginning with Aries,
+    // Cancer, Libra, or Capricorn respectively.
+    Date.Season = static_cast<ETavernSeason>(SunIndex / 3);
+
+    // Solar turning points: days 1, 13, 25, 37.
+    // Cross-quarter festivals: days 7, 19, 31, 43.
+    // Even six-day spacing is a deliberate compressed-calendar convention.
+    switch (Date.DayOfYear)
+    {
+    case 1:  Date.Festival = ETavernYearFestival::Ostara; break;
+    case 7:  Date.Festival = ETavernYearFestival::Beltane; break;
+    case 13: Date.Festival = ETavernYearFestival::Litha; break;
+    case 19: Date.Festival = ETavernYearFestival::Lughnasadh; break;
+    case 25: Date.Festival = ETavernYearFestival::Mabon; break;
+    case 31: Date.Festival = ETavernYearFestival::Samhain; break;
+    case 37: Date.Festival = ETavernYearFestival::Yule; break;
+    case 43: Date.Festival = ETavernYearFestival::Imbolc; break;
+    default: Date.Festival = ETavernYearFestival::None; break;
+    }
+    Date.bIsFestival = Date.Festival != ETavernYearFestival::None;
     const int32 PhaseIndex = Date.DayOfMonth - 1;
 
     // Moon is in the Sun's sign on New Moon, and the opposite sign on Full Moon.
