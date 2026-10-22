@@ -32,7 +32,7 @@ enum class ETavernZodiacSign : uint8
     Pisces
 };
 
-// Lunar gardening element associated with the Moon's zodiac sign.
+// The four zodiac elements, used for both Sun and Moon influences.
 UENUM(BlueprintType)
 enum class ETavernLunarElement : uint8
 {
@@ -69,6 +69,11 @@ struct FTavernLunarDate
     UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
     ETavernZodiacSign MoonSign = ETavernZodiacSign::Aries;
 
+    // The month-long dominant elemental influence.
+    UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
+    ETavernLunarElement SunElement = ETavernLunarElement::Fire;
+
+    // The daily secondary elemental influence.
     UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
     ETavernLunarElement MoonElement = ETavernLunarElement::Fire;
 };
