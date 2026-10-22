@@ -42,6 +42,33 @@ enum class ETavernLunarElement : uint8
     Water
 };
 
+// Seasons are based on tropical zodiac month, not on element associations.
+// Assigning an element to each season is intentionally left for game design.
+UENUM(BlueprintType)
+enum class ETavernSeason : uint8
+{
+    Spring,
+    Summer,
+    Autumn,
+    Winter
+};
+
+// Eight solar/cross-quarter Sabbats in the compressed 48-day fantasy year.
+// This enum identifies calendar dates only; it does not trigger gameplay events.
+UENUM(BlueprintType)
+enum class ETavernYearFestival : uint8
+{
+    None UMETA(DisplayName = "None"),
+    Ostara UMETA(DisplayName = "Ostara - Spring Equinox"),
+    Beltane UMETA(DisplayName = "Beltane"),
+    Litha UMETA(DisplayName = "Litha - Summer Solstice"),
+    Lughnasadh UMETA(DisplayName = "Lughnasadh - First Harvest"),
+    Mabon UMETA(DisplayName = "Mabon - Autumn Equinox"),
+    Samhain UMETA(DisplayName = "Samhain"),
+    Yule UMETA(DisplayName = "Yule - Winter Solstice"),
+    Imbolc UMETA(DisplayName = "Imbolc")
+};
+
 USTRUCT(BlueprintType)
 struct FTavernLunarDate
 {
@@ -59,6 +86,20 @@ struct FTavernLunarDate
 
     UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
     int32 DayOfMonth = 1;
+
+    // 1..48, repeats each year.
+    UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
+    int32 DayOfYear = 1;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
+    ETavernSeason Season = ETavernSeason::Spring;
+
+    // None on ordinary days. Existing OnLunarDateChanged broadcasts the date.
+    UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
+    ETavernYearFestival Festival = ETavernYearFestival::Ostara;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
+    bool bIsFestival = true;
 
     UPROPERTY(BlueprintReadOnly, Category = "Tavern|Calendar")
     ETavernMoonPhase MoonPhase = ETavernMoonPhase::NewMoon;
