@@ -41,6 +41,57 @@ FTavernLunarDate UTavernSubsystem::GetCurrentLunarDate() const
 	return UTavernLunarCalendarLibrary::GetLunarCalendarDate(State.DayNr);
 }
 
+FText UTavernSubsystem::GetCurrentCalendarDebugText() const
+{
+	// Intentionally plain text for temporary calendar prototyping.
+	// The finalized calendar widget can use GetCurrentLunarDate() instead.
+	static const TCHAR* const ZodiacLabels[] = {
+		TEXT("Aries"), TEXT("Taurus"), TEXT("Gemini"), TEXT("Cancer"),
+		TEXT("Leo"), TEXT("Virgo"), TEXT("Libra"), TEXT("Scorpio"),
+		TEXT("Sagittarius"), TEXT("Capricorn"), TEXT("Aquarius"), TEXT("Pisces")
+	};
+	static const TCHAR* const ElementLabels[] = {
+		TEXT("Fire"), TEXT("Earth"), TEXT("Air"), TEXT("Water")
+	};
+	static const TCHAR* const MoonLabels[] = {
+		TEXT("New Moon"), TEXT("Waxing Moon"), TEXT("Full Moon"), TEXT("Waning Moon")
+	};
+	static const TCHAR* const SeasonLabels[] = {
+		TEXT("Spring"), TEXT("Summer"), TEXT("Autumn"), TEXT("Winter")
+	};
+	static const TCHAR* const FestivalLabels[] = {
+		TEXT("None"), TEXT("Ostara (Spring Equinox)"), TEXT("Beltane"),
+		TEXT("Litha (Summer Solstice)"), TEXT("Lughnasadh (First Harvest)"),
+		TEXT("Mabon (Autumn Equinox)"), TEXT("Samhain"), TEXT("Yule (Winter Solstice)"),
+		TEXT("Imbolc")
+	};
+
+	const FTavernLunarDate D = GetCurrentLunarDate();
+	const int32 Sun = FMath::Clamp(static_cast<int32>(D.SunSign), 0, 11);
+	const int32 Moon = FMath::Clamp(static_cast<int32>(D.MoonSign), 0, 11);
+	const int32 SunElement = FMath::Clamp(static_cast<int32>(D.SunElement), 0, 3);
+	const int32 MoonElement = FMath::Clamp(static_cast<int32>(D.MoonElement), 0, 3);
+	const int32 Phase = FMath::Clamp(static_cast<int32>(D.MoonPhase), 0, 3);
+	const int32 Season = FMath::Clamp(static_cast<int32>(D.Season), 0, 3);
+	const int32 Festival = FMath::Clamp(static_cast<int32>(D.Festival), 0, 8);
+
+	const FString Info = FString::Printf(
+		TEXT("YEAR %d  |  %s  |  DAY %d/48\\n")
+		TEXT("%s MONTH  |  DAY %d/4  |  GAME DAY %d\\n\\n")
+		TEXT("SUN (PRIMARY): %s  |  %s\\n")
+		TEXT("MOON: %s  |  %s  |  %s\\n\\n")
+		TEXT("FESTIVAL: %s\\n")
+		TEXT("SEASON ELEMENT: TBD (design decision)\\n")
+		TEXT("ROOM DIRECTIONS (planned): N Earth | E Air | S Fire | W Water"),
+		D.Year, SeasonLabels[Season], D.DayOfYear,
+		ZodiacLabels[Sun], D.DayOfMonth, D.DayNr,
+		ZodiacLabels[Sun], ElementLabels[SunElement],
+		MoonLabels[Phase], ZodiacLabels[Moon], ElementLabels[MoonElement],
+		FestivalLabels[Festival]
+	);
+	return FText::FromString(Info);
+}
+
 void UTavernSubsystem::SetDayNr(int32 NewDayNr)
 {
 	NewDayNr = FMath::Max(1, NewDayNr);
