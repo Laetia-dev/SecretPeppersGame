@@ -36,6 +36,11 @@ int32 UTavernSubsystem::GetDayNr() const
 	return State.DayNr;
 }
 
+FTavernLunarDate UTavernSubsystem::GetCurrentLunarDate() const
+{
+	return UTavernLunarCalendarLibrary::GetLunarCalendarDate(State.DayNr);
+}
+
 void UTavernSubsystem::SetDayNr(int32 NewDayNr)
 {
 	NewDayNr = FMath::Max(1, NewDayNr);
@@ -47,6 +52,7 @@ void UTavernSubsystem::SetDayNr(int32 NewDayNr)
 
 	State.DayNr = NewDayNr;
 	OnDayChanged.Broadcast(State.DayNr);
+	OnLunarDateChanged.Broadcast(GetCurrentLunarDate());
 }
 
 void UTavernSubsystem::AdvanceDay()
@@ -274,6 +280,7 @@ void UTavernSubsystem::ResetRun(bool bResetDayNr)
 	OnRunReset.Broadcast();
 	OnTimeChanged.Broadcast(State.TimeOfDay);
 	OnDayChanged.Broadcast(State.DayNr);
+	OnLunarDateChanged.Broadcast(GetCurrentLunarDate());
 	OnVibeChanged.Broadcast(State.Vibe);
 	OnCleanlinessChanged.Broadcast(State.Cleanliness);
 	OnInventoryChanged.Broadcast();
