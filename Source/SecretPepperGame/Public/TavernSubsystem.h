@@ -3,6 +3,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "TavernLunarCalendarLibrary.h"
 #include "TavernSubsystem.generated.h"
 
 UENUM(BlueprintType)
@@ -49,6 +50,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTavernTimeChanged, ETavernTimeOfDay
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTavernVibeChanged, int32, NewVibe);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTavernCleanlinessChanged, int32, NewCleanliness);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTavernDayChanged, int32, NewDayNr);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FTavernLunarDateChanged, FTavernLunarDate, NewLunarDate);
 
 // Observers read current ingredient counts through GetIngredientCount.
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTavernInventoryChanged);
@@ -70,6 +72,10 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Tavern")
 	int32 GetDayNr() const;
+
+	// Derived from the same DayNr used by FlipTimeOfDay / AdvanceDay.
+	UFUNCTION(BlueprintPure, Category = "Tavern|Calendar")
+	FTavernLunarDate GetCurrentLunarDate() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Tavern")
 	void SetDayNr(int32 NewDayNr);
@@ -143,6 +149,10 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Tavern|Events")
 	FTavernDayChanged OnDayChanged;
+
+	// Fired when DayNr changes, including Night -> Day via FlipTimeOfDay.
+	UPROPERTY(BlueprintAssignable, Category = "Tavern|Calendar|Events")
+	FTavernLunarDateChanged OnLunarDateChanged;
 
 	// Broadcast after an ingredient inventory change, or when ResetRun refreshes it.
 	UPROPERTY(BlueprintAssignable, Category = "Tavern|Events")
