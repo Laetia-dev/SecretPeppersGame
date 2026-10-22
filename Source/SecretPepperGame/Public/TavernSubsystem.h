@@ -77,6 +77,11 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Tavern|Calendar")
 	FTavernLunarDate GetCurrentLunarDate() const;
 
+	// Prototype only: returns one multiline string for displaying every current
+	// calendar property in a single UMG TextBlock. No gameplay side effects.
+	UFUNCTION(BlueprintPure, Category = "Tavern|Calendar|Debug")
+	FText GetCurrentCalendarDebugText() const;
+
 	UFUNCTION(BlueprintCallable, Category = "Tavern")
 	void SetDayNr(int32 NewDayNr);
 
