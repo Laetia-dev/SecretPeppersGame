@@ -16,6 +16,8 @@ void UTavernSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Inventory.Add(ETavernIngredient::Herb, 0);
 	Inventory.Add(ETavernIngredient::Ash, 0);
 
+	ItemSlots.SetNum(20);
+
 	State.Coins = 10;
 	State.PreparedFood = 0;
 
@@ -27,6 +29,7 @@ void UTavernSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 void UTavernSubsystem::Deinitialize()
 {
 	Inventory.Empty();
+	ItemSlots.Empty();
 	CelestialYearPlans.Empty();
 	Super::Deinitialize();
 }
@@ -330,6 +333,186 @@ bool UTavernSubsystem::ConsumeIngredient(ETavernIngredient Type, int32 Amount)
 	return true;
 }
 
+int32 UTavernSubsystem::GetInventorySlotCount() const
+{
+	return ItemSlots.Num();
+}
+
+FTavernInventorySlot UTavernSubsystem::GetInventorySlot(int32 SlotIndex) const
+{
+	return ItemSlots.IsValidIndex(SlotIndex) ? ItemSlots[SlotIndex] : FTavernInventorySlot();
+}
+
+TArray<FTavernInventorySlot> UTavernSubsystem::GetInventorySlots() const
+{
+	return ItemSlots;
+}
+
+bool UTavernSubsystem::HasInventoryItem(FName ItemID, int32 Quantity) const
+{
+	if (ItemID.IsNone() || Quantity < 0)
+	{
+		return false;
+	}
+	if (Quantity == 0)
+	{
+		return true;
+	}
+
+	int64 Total = 0;
+	for (const FTavernInventorySlot& Slot : ItemSlots)
+	{
+		if (Slot.ItemID == ItemID)
+		{
+			Total += Slot.Quantity;
+			if (Total >= Quantity)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool UTavernSubsystem::AddInventoryItem(FName ItemID, int32 Quantity, int32 MaxStackSize)
+{
+	if (ItemID.IsNone() || Quantity <= 0 || MaxStackSize <= 0)
+	{
+		return false;
+	}
+
+	// Work on a copy so a full inventory cannot partially accept a pickup.
+	TArray<FTavernInventorySlot> Updated = ItemSlots;
+	int32 Remaining = Quantity;
+
+	for (FTavernInventorySlot& Slot : Updated)
+	{
+		if (Remaining == 0)
+		{
+			break;
+		}
+		if (Slot.ItemID == ItemID && Slot.Quantity > 0 && Slot.Quantity < Slot.MaxStackSize)
+		{
+			const int32 Added = FMath::Min(Remaining, Slot.MaxStackSize - Slot.Quantity);
+			Slot.Quantity += Added;
+			Remaining -= Added;
+		}
+	}
+
+	for (FTavernInventorySlot& Slot : Updated)
+	{
+		if (Remaining == 0)
+		{
+			break;
+		}
+		if (Slot.ItemID.IsNone() || Slot.Quantity == 0)
+		{
+			const int32 Added = FMath::Min(Remaining, MaxStackSize);
+			Slot.ItemID = ItemID;
+			Slot.Quantity = Added;
+			Slot.MaxStackSize = MaxStackSize;
+			Remaining -= Added;
+		}
+	}
+
+	if (Remaining != 0)
+	{
+		return false;
+	}
+
+	ItemSlots = MoveTemp(Updated);
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
+bool UTavernSubsystem::RemoveInventoryItem(FName ItemID, int32 Quantity)
+{
+	if (ItemID.IsNone() || Quantity <= 0 || !HasInventoryItem(ItemID, Quantity))
+	{
+		return false;
+	}
+
+	int32 Remaining = Quantity;
+	for (FTavernInventorySlot& Slot : ItemSlots)
+	{
+		if (Remaining == 0)
+		{
+			break;
+		}
+		if (Slot.ItemID != ItemID)
+		{
+			continue;
+		}
+		const int32 Removed = FMath::Min(Remaining, Slot.Quantity);
+		Slot.Quantity -= Removed;
+		Remaining -= Removed;
+		if (Slot.Quantity == 0)
+		{
+			Slot = FTavernInventorySlot();
+		}
+	}
+
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
+bool UTavernSubsystem::RemoveInventoryItemAtSlot(int32 SlotIndex, int32 Quantity)
+{
+	if (!ItemSlots.IsValidIndex(SlotIndex) || Quantity <= 0)
+	{
+		return false;
+	}
+
+	FTavernInventorySlot& Slot = ItemSlots[SlotIndex];
+	if (Slot.ItemID.IsNone() || Slot.Quantity < Quantity)
+	{
+		return false;
+	}
+
+	Slot.Quantity -= Quantity;
+	if (Slot.Quantity == 0)
+	{
+		Slot = FTavernInventorySlot();
+	}
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
+bool UTavernSubsystem::MoveInventoryItem(int32 FromSlot, int32 ToSlot)
+{
+	if (!ItemSlots.IsValidIndex(FromSlot) || !ItemSlots.IsValidIndex(ToSlot) ||
+		FromSlot == ToSlot || ItemSlots[FromSlot].ItemID.IsNone())
+	{
+		return false;
+	}
+
+	FTavernInventorySlot& Source = ItemSlots[FromSlot];
+	FTavernInventorySlot& Target = ItemSlots[ToSlot];
+
+	if (!Target.ItemID.IsNone() && Source.ItemID == Target.ItemID)
+	{
+		const int32 Room = FMath::Max(0, Target.MaxStackSize - Target.Quantity);
+		const int32 Moved = FMath::Min(Room, Source.Quantity);
+		if (Moved == 0)
+		{
+			return false;
+		}
+		Target.Quantity += Moved;
+		Source.Quantity -= Moved;
+		if (Source.Quantity == 0)
+		{
+			Source = FTavernInventorySlot();
+		}
+	}
+	else
+	{
+		Swap(Source, Target);
+	}
+
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
 int32 UTavernSubsystem::GetPreparedFood() const
 {
 	return State.PreparedFood;
@@ -371,7 +554,13 @@ void UTavernSubsystem::ClearInventory()
 		Pair.Value = 0;
 	}
 
-	// Notify once after every ingredient has been cleared.
+	for (FTavernInventorySlot& Slot : ItemSlots)
+	{
+		bChanged |= !Slot.ItemID.IsNone() || Slot.Quantity != 0;
+		Slot = FTavernInventorySlot();
+	}
+
+	// Notify once after every ingredient or grid slot has been cleared.
 	if (bChanged)
 	{
 		OnInventoryChanged.Broadcast();
@@ -428,6 +617,10 @@ void UTavernSubsystem::ResetRun(bool bResetDayNr)
 	for (auto& Pair : Inventory)
 	{
 		Pair.Value = 0;
+	}
+	for (FTavernInventorySlot& Slot : ItemSlots)
+	{
+		Slot = FTavernInventorySlot();
 	}
 
 	// A new run gets a fresh sky, including when DayNr is intentionally retained.
