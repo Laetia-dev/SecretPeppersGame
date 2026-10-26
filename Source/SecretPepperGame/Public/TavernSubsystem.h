@@ -52,6 +52,24 @@ enum class ETavernIngredient : uint8
 	Ash UMETA(DisplayName = "Ash"),
 };
 
+// An occupied grid slot refers to an item definition (for example, a DT_Loot row).
+// Quantity 0 / ItemID None represents an empty slot.
+USTRUCT(BlueprintType)
+struct FTavernInventorySlot
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Grid")
+	FName ItemID = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Grid")
+	int32 Quantity = 0;
+
+	// Cards can use 1; stackable ingredients can use a larger limit.
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Grid")
+	int32 MaxStackSize = 99;
+};
+
 USTRUCT(BlueprintType)
 struct FTavernState
 {
@@ -159,6 +177,35 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory")
 	void ClearInventory();
 
+	// Slot-based inventory for the grid UI. The older enum ingredient counter
+	// stays available while gameplay is migrated to the slot-based system.
+	UFUNCTION(BlueprintPure, Category = "Tavern|Inventory|Grid")
+	int32 GetInventorySlotCount() const;
+
+	UFUNCTION(BlueprintPure, Category = "Tavern|Inventory|Grid")
+	FTavernInventorySlot GetInventorySlot(int32 SlotIndex) const;
+
+	UFUNCTION(BlueprintPure, Category = "Tavern|Inventory|Grid")
+	TArray<FTavernInventorySlot> GetInventorySlots() const;
+
+	UFUNCTION(BlueprintPure, Category = "Tavern|Inventory|Grid")
+	bool HasInventoryItem(FName ItemID, int32 Quantity = 1) const;
+
+	// Returns false without changing inventory if there is insufficient room.
+	// Use MaxStackSize = 1 for non-stackable Tarot cards.
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
+	bool AddInventoryItem(FName ItemID, int32 Quantity = 1, int32 MaxStackSize = 99);
+
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
+	bool RemoveInventoryItem(FName ItemID, int32 Quantity = 1);
+
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
+	bool RemoveInventoryItemAtSlot(int32 SlotIndex, int32 Quantity = 1);
+
+	// Drag-and-drop: move, swap, or merge two matching stacks.
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
+	bool MoveInventoryItem(int32 FromSlot, int32 ToSlot);
+
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Food")
 	int32 GetPreparedFood() const;
 
@@ -197,7 +244,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Tavern|Calendar|Events")
 	FTavernLunarDateChanged OnLunarDateChanged;
 
-	// Broadcast after an ingredient inventory change, or when ResetRun refreshes it.
+	// Broadcast after either ingredient counter or grid inventory changes, including ResetRun.
 	UPROPERTY(BlueprintAssignable, Category = "Tavern|Events")
 	FTavernInventoryChanged OnInventoryChanged;
 
@@ -228,6 +275,10 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory")
 	TMap<ETavernIngredient, int32> Inventory;
+
+	// Fixed-size 20-slot grid, maintained by the functions above.
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Grid")
+	TArray<FTavernInventorySlot> ItemSlots;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Tavern|Tuning")
 	int32 VibeMin = -5;
