@@ -6,6 +6,7 @@
 
 class UDataTable;
 class UTavernLayoutSubsystem;
+class UTavernSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FDeckWallChanged);
 
@@ -38,6 +39,19 @@ public:
 	// Returning false means the slot, card ID, or table configuration is invalid.
 	UFUNCTION(BlueprintCallable, Category="Tavern|Deck Wall")
 	bool PlaceMajorArcanaInSlot(int32 SlotIndex, FName CardId);
+
+	// Inventory-to-wall: consumes exactly one item from the given grid slot.
+	// Fails without consuming anything if the wall slot is occupied or the card is invalid.
+	UFUNCTION(BlueprintCallable, Category="Tavern|Deck Wall|Inventory")
+	bool PlaceInventoryCardInWallSlot(int32 FromInventorySlot, int32 ToWallSlot);
+
+	// Wall-to-inventory: returns one card copy; fails if inventory has no space.
+	UFUNCTION(BlueprintCallable, Category="Tavern|Deck Wall|Inventory")
+	bool ReturnWallCardToInventory(int32 WallSlot);
+
+	// For dragging a card already on the wall; swap with the destination if needed.
+	UFUNCTION(BlueprintCallable, Category="Tavern|Deck Wall")
+	bool MoveWallCardBetweenSlots(int32 FromWallSlot, int32 ToWallSlot);
 
 	UFUNCTION(BlueprintCallable, Category="Tavern|Deck Wall")
 	bool RemoveCardFromWallSlot(int32 SlotIndex);

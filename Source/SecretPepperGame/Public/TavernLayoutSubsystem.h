@@ -22,6 +22,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Deck")
 	bool PlaceCardInSlot(int32 SlotIndex, FName CardId);
 
+	// Place an additional physical copy without moving an existing matching Arcana ID.
+	// Safe only for an empty wall slot; intended for inventory-to-wall transfers.
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Deck")
+	bool PlaceCardCopyInEmptySlot(int32 SlotIndex, FName CardId);
+
+	// Move a specific wall-slot instance, not a card ID (duplicates are supported).
+	// Swaps occupied slots rather than discarding either card.
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Deck")
+	bool MoveCardBetweenSlots(int32 FromSlot, int32 ToSlot);
+
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Deck")
 	bool RemoveCardFromSlot(int32 SlotIndex);
 
