@@ -206,6 +206,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
 	bool MoveInventoryItem(int32 FromSlot, int32 ToSlot);
 
+	// Shift + drag: transfer half (rounded up) to an empty or matching stack.
+	// Reject occupied slots of another item type; never swap on split.
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
+	bool SplitInventoryStack(int32 FromSlot, int32 ToSlot);
+
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Food")
 	int32 GetPreparedFood() const;
 
