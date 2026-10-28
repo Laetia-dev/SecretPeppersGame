@@ -513,6 +513,51 @@ bool UTavernSubsystem::MoveInventoryItem(int32 FromSlot, int32 ToSlot)
 	return true;
 }
 
+bool UTavernSubsystem::SplitInventoryStack(int32 FromSlot, int32 ToSlot)
+{
+	if (!ItemSlots.IsValidIndex(FromSlot) || !ItemSlots.IsValidIndex(ToSlot) || FromSlot == ToSlot)
+	{
+		return false;
+	}
+
+	FTavernInventorySlot& Source = ItemSlots[FromSlot];
+	FTavernInventorySlot& Target = ItemSlots[ToSlot];
+	if (Source.ItemID.IsNone() || Source.Quantity <= 1 || Source.MaxStackSize <= 0)
+	{
+		return false;
+	}
+
+	const bool bTargetEmpty = Target.ItemID.IsNone() || Target.Quantity == 0;
+	if (!bTargetEmpty && Target.ItemID != Source.ItemID)
+	{
+		// A split never swaps with a different item.
+		return false;
+	}
+
+	const int32 HalfRoundedUp = Source.Quantity / 2 + Source.Quantity % 2;
+	const int32 DestinationCapacity = bTargetEmpty
+		? Source.MaxStackSize
+		: FMath::Max(0, Target.MaxStackSize - Target.Quantity);
+	const int32 TransferAmount = FMath::Min(HalfRoundedUp, DestinationCapacity);
+	if (TransferAmount <= 0)
+	{
+		return false;
+	}
+
+	if (bTargetEmpty)
+	{
+		Target = Source;
+		Target.Quantity = TransferAmount;
+	}
+	else
+	{
+		Target.Quantity += TransferAmount;
+	}
+	Source.Quantity -= TransferAmount;
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
 int32 UTavernSubsystem::GetPreparedFood() const
 {
 	return State.PreparedFood;
