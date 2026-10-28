@@ -1,6 +1,7 @@
 #include "DeckWallComponent.h"
 
 #include "TavernLayoutSubsystem.h"
+#include "TavernSubsystem.h"
 #include "Engine/DataTable.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -63,6 +64,78 @@ bool UDeckWallComponent::PlaceMajorArcanaInSlot(int32 SlotIndex, FName CardId)
 	// This changes the deck only. Rooms are regenerated at the next night,
 	// not immediately while the player may be inside a temporary room.
 	return LayoutSubsystem->PlaceCardInSlot(SlotIndex, CardId);
+}
+
+bool UDeckWallComponent::PlaceInventoryCardInWallSlot(int32 FromInventorySlot, int32 ToWallSlot)
+{
+	if (!LayoutSubsystem || !MajorArcanaTable || !IsValidSlot(ToWallSlot) ||
+		!LayoutSubsystem->GetCardInSlot(ToWallSlot).IsNone())
+	{
+		return false;
+	}
+
+	UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	UTavernSubsystem* Inventory = GameInstance ? GameInstance->GetSubsystem<UTavernSubsystem>() : nullptr;
+	if (!Inventory)
+	{
+		return false;
+	}
+
+	const FTavernInventorySlot Source = Inventory->GetInventorySlot(FromInventorySlot);
+	if (FromInventorySlot < 0 || FromInventorySlot >= Inventory->GetInventorySlotCount() ||
+		Source.ItemID.IsNone() || Source.Quantity < 1 ||
+		!MajorArcanaTable->GetRowNames().Contains(Source.ItemID))
+	{
+		return false;
+	}
+
+	// Reserve the destination before consuming inventory. Roll back if the
+	// inventory removal unexpectedly fails (e.g. a reentrant UI callback).
+	if (!LayoutSubsystem->PlaceCardCopyInEmptySlot(ToWallSlot, Source.ItemID))
+	{
+		return false;
+	}
+	if (!Inventory->RemoveInventoryItemAtSlot(FromInventorySlot, 1))
+	{
+		LayoutSubsystem->RemoveCardFromSlot(ToWallSlot);
+		return false;
+	}
+	return true;
+}
+
+bool UDeckWallComponent::ReturnWallCardToInventory(int32 WallSlot)
+{
+	if (!LayoutSubsystem || !IsValidSlot(WallSlot))
+	{
+		return false;
+	}
+
+	const FName CardId = LayoutSubsystem->GetCardInSlot(WallSlot);
+	if (CardId.IsNone())
+	{
+		return false;
+	}
+
+	UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	UTavernSubsystem* Inventory = GameInstance ? GameInstance->GetSubsystem<UTavernSubsystem>() : nullptr;
+	if (!Inventory || !Inventory->AddInventoryItem(CardId, 1, 1))
+	{
+		return false;
+	}
+
+	if (!LayoutSubsystem->RemoveCardFromSlot(WallSlot))
+	{
+		// This should not happen after the successful presence check.
+		Inventory->RemoveInventoryItem(CardId, 1);
+		return false;
+	}
+	return true;
+}
+
+bool UDeckWallComponent::MoveWallCardBetweenSlots(int32 FromWallSlot, int32 ToWallSlot)
+{
+	return LayoutSubsystem && IsValidSlot(FromWallSlot) && IsValidSlot(ToWallSlot) &&
+		LayoutSubsystem->MoveCardBetweenSlots(FromWallSlot, ToWallSlot);
 }
 
 bool UDeckWallComponent::RemoveCardFromWallSlot(int32 SlotIndex)
