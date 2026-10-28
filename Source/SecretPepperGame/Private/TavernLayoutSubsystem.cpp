@@ -35,6 +35,45 @@ bool UTavernLayoutSubsystem::PlaceCardInSlot(int32 SlotIndex, FName CardId)
 	return true;
 }
 
+bool UTavernLayoutSubsystem::PlaceCardCopyInEmptySlot(int32 SlotIndex, FName CardId)
+{
+	if (SlotIndex < 0 || CardId.IsNone() || PlacedCards.Contains(SlotIndex))
+	{
+		return false;
+	}
+
+	PlacedCards.Add(SlotIndex, CardId);
+	OnDeckChanged.Broadcast();
+	return true;
+}
+
+bool UTavernLayoutSubsystem::MoveCardBetweenSlots(int32 FromSlot, int32 ToSlot)
+{
+	if (FromSlot < 0 || ToSlot < 0 || FromSlot == ToSlot)
+	{
+		return false;
+	}
+
+	const FName* Source = PlacedCards.Find(FromSlot);
+	if (!Source || Source->IsNone())
+	{
+		return false;
+	}
+
+	const FName SourceCard = *Source;
+	if (const FName* Target = PlacedCards.Find(ToSlot))
+	{
+		PlacedCards.Add(FromSlot, *Target);
+	}
+	else
+	{
+		PlacedCards.Remove(FromSlot);
+	}
+	PlacedCards.Add(ToSlot, SourceCard);
+	OnDeckChanged.Broadcast();
+	return true;
+}
+
 bool UTavernLayoutSubsystem::RemoveCardFromSlot(int32 SlotIndex)
 {
 	if (PlacedCards.Remove(SlotIndex) == 0)
