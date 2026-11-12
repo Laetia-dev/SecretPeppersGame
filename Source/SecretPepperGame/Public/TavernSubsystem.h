@@ -196,6 +196,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
 	bool AddInventoryItem(FName ItemID, int32 Quantity = 1, int32 MaxStackSize = 99);
 
+	// Insert one item into the exact empty grid slot requested by the UI.
+	// Returns false without changing the inventory when the slot is occupied or invalid.
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
+	bool AddInventoryItemAtSlot(FName ItemID, int32 SlotIndex, int32 MaxStackSize = 1);
+
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
 	bool RemoveInventoryItem(FName ItemID, int32 Quantity = 1);
 
