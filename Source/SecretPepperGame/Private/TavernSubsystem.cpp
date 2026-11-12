@@ -425,6 +425,27 @@ bool UTavernSubsystem::AddInventoryItem(FName ItemID, int32 Quantity, int32 MaxS
 	return true;
 }
 
+bool UTavernSubsystem::AddInventoryItemAtSlot(FName ItemID, int32 SlotIndex, int32 MaxStackSize)
+{
+	if (ItemID.IsNone() || MaxStackSize <= 0 || !ItemSlots.IsValidIndex(SlotIndex))
+	{
+		return false;
+	}
+
+	FTavernInventorySlot& Target = ItemSlots[SlotIndex];
+	if (!Target.ItemID.IsNone() || Target.Quantity != 0)
+	{
+		// Don't overwrite existing items or silently redirect to another slot.
+		return false;
+	}
+
+	Target.ItemID = ItemID;
+	Target.Quantity = 1;
+	Target.MaxStackSize = MaxStackSize;
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
 bool UTavernSubsystem::RemoveInventoryItem(FName ItemID, int32 Quantity)
 {
 	if (ItemID.IsNone() || Quantity <= 0 || !HasInventoryItem(ItemID, Quantity))
