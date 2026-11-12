@@ -65,9 +65,20 @@ struct FTavernInventorySlot
 	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Grid")
 	int32 Quantity = 0;
 
-	// Cards can use 1; stackable ingredients can use a larger limit.
+	// Cards and containers use 1; stackable ingredients can use a larger limit.
 	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Grid")
 	int32 MaxStackSize = 99;
+
+	// Per-instance contents for a portable container, not part of its DT_Loot definition.
+	// Capacity 0 means the inventory item is not currently carrying container state.
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Container")
+	FName StoredItemID = NAME_None;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Container")
+	int32 StoredQuantity = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Tavern|Inventory|Container")
+	int32 Capacity = 0;
 };
 
 USTRUCT(BlueprintType)
@@ -200,6 +211,11 @@ public:
 	// Returns false without changing the inventory when the slot is occupied or invalid.
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
 	bool AddInventoryItemAtSlot(FName ItemID, int32 SlotIndex, int32 MaxStackSize = 1);
+
+	// Transfer one non-stackable container, including its contents, into a chosen empty slot.
+	// This does not remove the original container from its source; caller clears the source on success.
+	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Container")
+	bool AddInventoryContainerAtSlot(FName ContainerItemID, int32 SlotIndex, FName StoredItemID, int32 StoredQuantity, int32 Capacity);
 
 	UFUNCTION(BlueprintCallable, Category = "Tavern|Inventory|Grid")
 	bool RemoveInventoryItem(FName ItemID, int32 Quantity = 1);
