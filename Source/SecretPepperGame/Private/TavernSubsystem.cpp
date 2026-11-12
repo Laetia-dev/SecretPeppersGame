@@ -446,6 +446,36 @@ bool UTavernSubsystem::AddInventoryItemAtSlot(FName ItemID, int32 SlotIndex, int
 	return true;
 }
 
+bool UTavernSubsystem::AddInventoryContainerAtSlot(
+	FName ContainerItemID, int32 SlotIndex, FName StoredItemID, int32 StoredQuantity, int32 Capacity)
+{
+	// Reject invalid or contradictory contents before changing the inventory.
+	if (ContainerItemID.IsNone() || !ItemSlots.IsValidIndex(SlotIndex) ||
+		Capacity <= 0 || StoredQuantity < 0 || StoredQuantity > Capacity ||
+		(StoredQuantity > 0 && StoredItemID.IsNone()))
+	{
+		return false;
+	}
+
+	FTavernInventorySlot& Target = ItemSlots[SlotIndex];
+	if (!Target.ItemID.IsNone() || Target.Quantity != 0)
+	{
+		return false;
+	}
+
+	FTavernInventorySlot ContainerSlot;
+	ContainerSlot.ItemID = ContainerItemID;
+	ContainerSlot.Quantity = 1;
+	ContainerSlot.MaxStackSize = 1;
+	ContainerSlot.StoredItemID = StoredQuantity > 0 ? StoredItemID : NAME_None;
+	ContainerSlot.StoredQuantity = StoredQuantity;
+	ContainerSlot.Capacity = Capacity;
+
+	Target = ContainerSlot;
+	OnInventoryChanged.Broadcast();
+	return true;
+}
+
 bool UTavernSubsystem::RemoveInventoryItem(FName ItemID, int32 Quantity)
 {
 	if (ItemID.IsNone() || Quantity <= 0 || !HasInventoryItem(ItemID, Quantity))
